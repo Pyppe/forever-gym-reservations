@@ -3,6 +3,8 @@ const OAuth2 = google.auth.OAuth2;
 const calendar = google.calendar('v3');
 const auth = require('./client_secret.json').web;
 const uuid = require('uuid');
+const _ = require('lodash');
+const crypto = require('crypto');
 const Cachd = require('cachd');
 const reservationCache = new Cachd({
   ttl: 1000*60*30, // max age millis
@@ -18,6 +20,10 @@ function generateAuthUrl() {
     scope: ['https://www.googleapis.com/auth/calendar']
   });
 }
+
+const StatusCode = {
+  BAD_REQUEST: 400
+};
 
 function mockEvent() {
   return {
@@ -47,7 +53,21 @@ function fetchEvents(auth, callback) {
   }, callback);
 }
 
+const RequiredReservationFields = ['summary', 'location', 'description', 'startTime', 'endTime'];
 
+const isValidReservation = (reservation) => _.every(RequiredReservationFields, key => _.has(reservation, key));
+const md5 = str => crypto.createHash('md5').update(str).digest("hex");
+
+const asGoogleEvent = (reservation) => {
+  const finnishDate = d => {
+    return {dateTime: d, timeZone: 'Europe/Helsinki'};
+  }
+  return _.assign(_.pick(reservation, 'summary', 'location', 'description'), {
+    start: finnishDate(reservation.startTime),
+    end: finnishDate(reservation.endTime),
+    iCalUID: md5(_.map(_.without(RequiredReservationFields, 'description'), f => reservation[f]).join(',')) + '@forever-gym-reservations'
+  });
+};
 
 const express = require('express');
 const app = express();
@@ -63,6 +83,8 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });
+
+
 app.get('/', (req, res) => {
   res.send({
     reservationId: req.session.reservationId,
@@ -81,11 +103,15 @@ app.get('/mock', (req, res) => {
 });
 
 app.post('/reservations', (req, res) => {
-  //res.header("Access-Control-Allow-Origin", "*");
-  //res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  const id = uuid.v4();
-  reservationCache.set(id, req.body);
-  res.send({id: id});
+  const reservations = req.body;
+  const validData = _.isArray(reservations) && _.size(reservations) > 0 && _.every(reservations, isValidReservation);
+  if (validData) {
+    const id = uuid.v4();
+    reservationCache.set(id, reservations);
+    res.send({id: id});
+  } else {
+    res.status(StatusCode.BAD_REQUEST).send('ERROR');
+  }
 });
 
 app.get('/oauthcallback', (req, res) => {
@@ -103,7 +129,30 @@ app.get('/oauthcallback', (req, res) => {
       });
       */
 
-      res.redirect('/');
+      const reservations = reservationCache.get(req.session.reservationId);
+      const events = _.map(reservations, asGoogleEvent);
+
+      var readyCount = 0;
+      _.forEach(events, event => {
+        calendar.events.import({
+          auth: oauth2Client,
+          calendarId: 'primary',
+          resource: event
+        }, (err, response) => {
+          readyCount++;
+          if (err) {
+            console.error('Error: %o', err);
+            res.status(500).send(err);
+            return;
+          } else {
+            if (readyCount === events.length) {
+              res.send(`OK: Google-kalenteriin tallennettiin ${events.length} ${events.length === 1 ? 'varaus' : 'varausta'}`);
+            }
+          }
+        });
+      })
+
+
 
 
       /*

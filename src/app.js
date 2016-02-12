@@ -60,7 +60,7 @@ function saveReservations(reservations) {
   return $.ajax({
     url: 'http://localhost:3000/reservations',
     type: 'POST',
-    contentType: 'application/json'
+    contentType: 'application/json',
     data: JSON.stringify(reservations)
   }).error(err => {
     alert('Virhe');
@@ -87,8 +87,13 @@ function uploadFile(filename, description, content) {
 }
 
 loadScript('https://code.jquery.com/jquery.min.js', () => {
+  /*
   uploadFile('testing.json', 'Pyppe testaa', 'foo\nbar\nhehe').done(url => {
     alert(url);
+  });
+  */
+  saveReservations(parseReservations()).done(res => {
+    window.open(`http://localhost:3000/authenticate?id=${res.id}`);
   });
 });
 
