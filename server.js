@@ -2,6 +2,13 @@ const google = require('googleapis');
 const OAuth2 = google.auth.OAuth2;
 const calendar = google.calendar('v3');
 const auth = require('./client_secret.json').web;
+const uuid = require('uuid');
+const Cachd = require('cachd');
+const reservationCache = new Cachd({
+  ttl: 1000*60*30, // max age millis
+  maxLength: 2000,
+  removalStrategy: 'oldest'
+});
 
 var oauth2Client = new OAuth2(auth.client_id, auth.client_secret, 'http://localhost:3000/oauthcallback');
 
@@ -44,12 +51,41 @@ function fetchEvents(auth, callback) {
 
 const express = require('express');
 const app = express();
+app.use(require('body-parser').json());
+app.use(require('express-session')({
+  genid: req => uuid.v4(),
+  resave: false,
+  saveUninitialized: true,
+  secret: '4iKj57IWuMto4TUMFrsGyGfpJ7ubXW83' // TODO: do not save in git
+}));
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  next();
+});
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+  res.send({
+    reservationId: req.session.reservationId,
+    reservations: reservationCache.get(req.session.reservationId)
+  });
 });
 
-app.get('/test', (req, res) => {
+app.get('/authenticate', (req, res) => {
+  req.session['reservationId'] = req.query.id;
   res.redirect(302, generateAuthUrl());
+});
+
+app.get('/mock', (req, res) => {
+  req.session['reservations'] = ['testing'];
+  res.send('session saved?');
+});
+
+app.post('/reservations', (req, res) => {
+  //res.header("Access-Control-Allow-Origin", "*");
+  //res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  const id = uuid.v4();
+  reservationCache.set(id, req.body);
+  res.send({id: id});
 });
 
 app.get('/oauthcallback', (req, res) => {
@@ -66,6 +102,11 @@ app.get('/oauthcallback', (req, res) => {
         res.send(events);
       });
       */
+
+      res.redirect('/');
+
+
+      /*
       calendar.events.import({
         auth: oauth2Client,
         calendarId: 'primary',
@@ -78,6 +119,7 @@ app.get('/oauthcallback', (req, res) => {
         }
         res.send(response);
       });
+      */
     }
   });
 });

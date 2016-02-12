@@ -20,18 +20,50 @@ function loadScript(url, onSuccess) {
   head.appendChild(script);
 }
 
-function reservations() {
+function parseReservations() {
   const $rows = $('.searchResults tbody tr');
-  $rows.toArray().map(row => {
-    const parseCol = (idx) => $.trim($row.find(`td:eq(${idx})`).text());
+
+  function parseIsoDate(str) {
+    const pad = x => x.length === 1 ? `0${x}` : x;
+    const m = str.match(/^(\d{1,2}).(\d{1,2}).(\d{4})$/);
+    return `${pad(m[3])}-${pad(m[2])}-${m[1]}`;
+  }
+
+  function parseTimes(str) {
+    const m = str.match(/^(\d\d:\d\d)\s*.\s*(\d\d:\d\d)$/);
+    return [`${m[1]}:00`, `${m[2]}:00`];
+  }
+
+  function trimText(t) {
+    return $.trim(t.replace(/([\n\r\t\s]+)/g, ' '));
+  }
+
+  return $rows.toArray().map(row => {
     const $row = $(row);
-    const date = parseCol(0);
-    const time = parseCol(1);
-    const event = parseCol(2);
+    const parseCol = (idx) => trimText($row.find(`td:eq(${idx})`).text());
+    const date = parseIsoDate(parseCol(0));
+    const [startTime, endTime] = parseTimes(parseCol(1));
     return {
-      date: date,
-      time: time
+      startTime   : `${date}T${startTime}`,
+      endTime     : `${date}T${endTime}`,
+      summary     : parseCol(2),
+      location    : trimText($('#club-name').text()),
+      description : [
+        `- Sijainti: ${parseCol(3)}`,
+        `- Ohjaaja: ${parseCol(4)}`,
+      ].join('\n')
     };
+  });
+}
+
+function saveReservations(reservations) {
+  return $.ajax({
+    url: 'http://localhost:3000/reservations',
+    type: 'POST',
+    contentType: 'application/json'
+    data: JSON.stringify(reservations)
+  }).error(err => {
+    alert('Virhe');
   });
 }
 
