@@ -67,6 +67,7 @@ function saveReservations(reservations) {
   });
 }
 
+/*
 function uploadFile(filename, description, content) {
   return $.ajax({
     url: 'https://api.github.com/gists',
@@ -85,6 +86,7 @@ function uploadFile(filename, description, content) {
     alert('Virhe');
   }).then(res => res.files[filename].raw_url);
 }
+*/
 
 loadScript('https://code.jquery.com/jquery.min.js', () => {
   /*

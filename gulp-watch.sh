@@ -1,5 +1,4 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 
 gulp watch
 while [ $? -eq 1 ]; do

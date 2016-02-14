@@ -1,7 +1,6 @@
 const google = require('googleapis');
 const OAuth2 = google.auth.OAuth2;
 const calendar = google.calendar('v3');
-const auth = require('./client_secret.json').web;
 const uuid = require('uuid');
 const _ = require('lodash');
 const crypto = require('crypto');
@@ -11,11 +10,21 @@ const reservationCache = new Cachd({
   maxLength: 2000,
   removalStrategy: 'oldest'
 });
+const CONFIG = require('./configuration.json');
+const mode = (process.env.NODE_ENV === 'production') ? 'production' : 'development';
+if (mode === 'development') {
+  CONFIG.baseUrl = 'http://localhost:3000';
+}
+const PATHS = {
+  googleOauthCallback: "/google/oauthcallback"
+};
 
-var oauth2Client = new OAuth2(auth.client_id, auth.client_secret, 'http://localhost:3000/oauthcallback');
+const googleOauth = () => new OAuth2(CONFIG.google.client_id,
+                                     CONFIG.google.client_secret,
+                                     `${baseUrl}${PATHS.googleOauthCallback}`);
 
-function generateAuthUrl() {
-  return oauth2Client.generateAuthUrl({
+function generateGoogleAuthUrl() {
+  return googleOauth().generateAuthUrl({
     access_type: 'online', // 'online' (default) or 'offline' (gets refresh_token)
     scope: ['https://www.googleapis.com/auth/calendar']
   });
@@ -38,7 +47,7 @@ function mockEvent() {
       dateTime: '2016-02-13T09:30:00',
       timeZone: 'Europe/Helsinki'
     },
-    iCalUID: 'pyppetestaa@forever-reservations'
+    iCalUID: 'pyppetestaa@forever-gym-reservations'
   };
 }
 
@@ -76,7 +85,7 @@ app.use(require('express-session')({
   genid: req => uuid.v4(),
   resave: false,
   saveUninitialized: true,
-  secret: '4iKj57IWuMto4TUMFrsGyGfpJ7ubXW83' // TODO: do not save in git
+  secret: CONFIG.session.secret
 }));
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
@@ -94,7 +103,7 @@ app.get('/', (req, res) => {
 
 app.get('/authenticate', (req, res) => {
   req.session['reservationId'] = req.query.id;
-  res.redirect(302, generateAuthUrl());
+  res.redirect(302, generateGoogleAuthUrl());
 });
 
 app.get('/mock', (req, res) => {
@@ -114,28 +123,18 @@ app.post('/reservations', (req, res) => {
   }
 });
 
-app.get('/oauthcallback', (req, res) => {
-  oauth2Client.getToken(req.query.code, (err, tokens) => {
+app.get(PATHS.googleOauthCallback, (req, res) => {
+  const client = googleOauth();
+  client.getToken(req.query.code, (err, tokens) => {
     if (!err) {
-      oauth2Client.setCredentials(tokens); // TODO: Cannot be global!
-      /*
-      fetchEvents(oauth2Client, (err, response) => {
-        if (err) {
-          console.log('The API returned an error: ' + err);
-          return;
-        }
-        var events = response.items;
-        res.send(events);
-      });
-      */
-
+      client.setCredentials(tokens);
       const reservations = reservationCache.get(req.session.reservationId);
       const events = _.map(reservations, asGoogleEvent);
 
       var readyCount = 0;
       _.forEach(events, event => {
         calendar.events.import({
-          auth: oauth2Client,
+          auth: client,
           calendarId: 'primary',
           resource: event
         }, (err, response) => {
@@ -150,31 +149,12 @@ app.get('/oauthcallback', (req, res) => {
             }
           }
         });
-      })
-
-
-
-
-      /*
-      calendar.events.import({
-        auth: oauth2Client,
-        calendarId: 'primary',
-        resource: mockEvent()
-      }, (err, response) => {
-        if (err) {
-          console.error('Error: %o', err);
-          res.status(500).send(err);
-          return;
-        }
-        res.send(response);
       });
-      */
     }
   });
 });
 
 
-app.listen(3000, () => {
-  console.log('Example app listening on port 3000!');
+app.listen(CONFIG.port, () => {
+  console.log(`forever-gym-reservations listening on port ${CONFIG.port}!`);
 });
-
