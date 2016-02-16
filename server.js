@@ -35,6 +35,15 @@ const StatusCode = {
   BAD_REQUEST: 400
 };
 
+const pageParams = (function() {
+  const startTime = new Date().getTime();
+  return params => _.assign({
+    Global: {
+      ApplicationStartTime: startTime
+    }
+  }, params || {});
+})();
+
 function mockEvent() {
   return {
     summary: 'Pyppe testaa',
@@ -93,13 +102,19 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });
-
+app.set('view engine', 'ejs');
+app.use(express.static('src')); // TODO: gulp to dist
 
 app.get('/', (req, res) => {
+  /*
   res.send({
     reservationId: req.session.reservationId,
     reservations: reservationCache.get(req.session.reservationId)
   });
+  */
+  res.render('index', pageParams({
+    message: 'Jou, jou'
+  }));
 });
 
 app.get('/authenticate', (req, res) => {
