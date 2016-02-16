@@ -56,9 +56,9 @@ function parseReservations() {
   });
 }
 
-function saveReservations(reservations) {
+function saveReservations(reservations, url) {
   return $.ajax({
-    url: 'http://localhost:3000/reservations',
+    url: url,
     type: 'POST',
     contentType: 'application/json',
     data: JSON.stringify(reservations)
@@ -94,8 +94,9 @@ loadScript('https://code.jquery.com/jquery.min.js', () => {
     alert(url);
   });
   */
-  saveReservations(parseReservations()).done(res => {
-    window.open(`http://localhost:3000/authenticate?id=${res.id}`);
+  const baseUrl = 'http://localhost:3000';
+  //const baseUrl = 'https://forever.pyppe.fi';
+  saveReservations(parseReservations(), `${baseUrl}/reservations`).done(res => {
+    window.open(`${baseUrl}/authenticate?id=${res.id}`);
   });
 });
-

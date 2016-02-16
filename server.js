@@ -14,6 +14,7 @@ const CONFIG = require('./configuration.json');
 const mode = (process.env.NODE_ENV === 'production') ? 'production' : 'development';
 if (mode === 'development') {
   CONFIG.baseUrl = 'http://localhost:3000';
+  CONFIG.port = 3000;
 }
 const PATHS = {
   googleOauthCallback: "/google/oauthcallback"
@@ -21,7 +22,7 @@ const PATHS = {
 
 const googleOauth = () => new OAuth2(CONFIG.google.client_id,
                                      CONFIG.google.client_secret,
-                                     `${baseUrl}${PATHS.googleOauthCallback}`);
+                                     `${CONFIG.baseUrl}${PATHS.googleOauthCallback}`);
 
 function generateGoogleAuthUrl() {
   return googleOauth().generateAuthUrl({
@@ -145,7 +146,11 @@ app.get(PATHS.googleOauthCallback, (req, res) => {
             return;
           } else {
             if (readyCount === events.length) {
-              res.send(`OK: Google-kalenteriin tallennettiin ${events.length} ${events.length === 1 ? 'varaus' : 'varausta'}`);
+              res.header("Content-Type", "text/html");
+              res.send([
+                `OK: Google-kalenteriin tallennettiin ${events.length} ${events.length === 1 ? 'varaus' : 'varausta'}.`,
+                `Katso <a href="https://calendar.google.com/">Google-kalenteri</a>.`
+              ].join('\n'));
             }
           }
         });
