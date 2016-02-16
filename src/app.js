@@ -20,6 +20,11 @@ function loadScript(url, onSuccess) {
   head.appendChild(script);
 }
 
+function isRightPage() {
+  return location.hostname === "forever.bypolar.fi" &&
+    location.search.indexOf("webUserReservations") > 0;
+}
+
 function parseReservations() {
   const $rows = $('.searchResults tbody tr');
 
@@ -88,15 +93,19 @@ function uploadFile(filename, description, content) {
 }
 */
 
-loadScript('https://code.jquery.com/jquery.min.js', () => {
-  /*
-  uploadFile('testing.json', 'Pyppe testaa', 'foo\nbar\nhehe').done(url => {
-    alert(url);
+if (isRightPage()) {
+  loadScript('https://code.jquery.com/jquery.min.js', () => {
+    //const baseUrl = 'http://localhost:3000';
+    const baseUrl = 'https://forever.pyppe.fi';
+    saveReservations(parseReservations(), `${baseUrl}/reservations`).done(res => {
+      window.open(`${baseUrl}/authenticate?id=${res.id}`);
+    });
   });
-  */
-  const baseUrl = 'http://localhost:3000';
-  //const baseUrl = 'https://forever.pyppe.fi';
-  saveReservations(parseReservations(), `${baseUrl}/reservations`).done(res => {
-    window.open(`${baseUrl}/authenticate?id=${res.id}`);
-  });
-});
+} else {
+  alert([
+    'Et ole oikealla sivulla.',
+    'Kirjaudu sisään osoitteessa https://forever.bypolar.fi/, ja mene "Omat varaukset" -sivulle.'
+  ].join('\n'));
+}
+
+
