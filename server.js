@@ -130,7 +130,7 @@ app.get('/mock', (req, res) => {
 
 app.post('/reservations', (req, res) => {
   const reservations = req.body;
-  const validData = _.isArray(reservations) && _.size(reservations) > 0 && _.every(reservations, isValidReservation);
+  const validData = _.isArray(reservations) && _.every(reservations, isValidReservation);
   if (validData) {
     const id = uuid.v4();
     reservationCache.set(id, reservations);

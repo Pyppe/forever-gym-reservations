@@ -94,13 +94,20 @@ function uploadFile(filename, description, content) {
 */
 
 if (isRightPage()) {
-  loadScript('https://code.jquery.com/jquery.min.js', () => {
-    //const baseUrl = 'http://localhost:3000';
-    const baseUrl = 'https://forever.pyppe.fi';
+  const baseUrl = 'http://localhost:3000';
+  //const baseUrl = 'https://forever.pyppe.fi';
+
+  const saveReservationsAction = () => {
     saveReservations(parseReservations(), `${baseUrl}/reservations`).done(res => {
       window.open(`${baseUrl}/authenticate?id=${res.id}`);
     });
-  });
+  };
+
+  if (typeof jQuery == 'undefined') {
+    loadScript('https://code.jquery.com/jquery.min.js', saveReservationsAction);
+  } else {
+    saveReservationsAction();
+  }
 } else {
   alert([
     'Et ole oikealla sivulla.',
