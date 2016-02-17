@@ -1,5 +1,5 @@
 const google = require('googleapis');
-const OAuth2 = google.auth.OAuth2;
+const googleOAuth2 = google.auth.OAuth2;
 const calendar = google.calendar('v3');
 const uuid = require('uuid');
 const _ = require('lodash');
@@ -20,14 +20,29 @@ const PATHS = {
   googleOauthCallback: "/google/oauthcallback"
 };
 
-const googleOauth = () => new OAuth2(CONFIG.google.client_id,
-                                     CONFIG.google.client_secret,
-                                     `${CONFIG.baseUrl}${PATHS.googleOauthCallback}`);
+const googleOauth = () => new googleOAuth2(CONFIG.google.client_id,
+                                           CONFIG.google.client_secret,
+                                           `${CONFIG.baseUrl}${PATHS.googleOauthCallback}`);
 
 function generateGoogleAuthUrl() {
   return googleOauth().generateAuthUrl({
     access_type: 'online', // 'online' (default) or 'offline' (gets refresh_token)
-    scope: ['https://www.googleapis.com/auth/calendar']
+    scope: [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/userinfo.profile'
+    ]
+  });
+}
+
+function logUserInfo(auth, reservations) {
+  google.oauth2('v2').userinfo.v2.me.get({
+    auth: auth
+  }, (err, user) => {
+    if (err) {
+      console.log('ERROR getting userinfo: ' + err);
+    } else {
+      console.log(`User ${user.name} (${user.link}) authenticated with ${_.size(reservations)} reservations`);
+    }
   });
 }
 
@@ -118,6 +133,10 @@ app.get('/', (req, res) => {
   }));
 });
 
+app.get('/test-google', (req, res) => {
+  res.redirect(302, generateGoogleAuthUrl());
+});
+
 app.get('/authenticate', (req, res) => {
   req.session['reservationId'] = req.query.id;
   res.redirect(302, generateGoogleAuthUrl());
@@ -145,10 +164,24 @@ app.get(PATHS.googleOauthCallback, (req, res) => {
   client.getToken(req.query.code, (err, tokens) => {
     if (!err) {
       client.setCredentials(tokens);
-      const reservations = reservationCache.get(req.session.reservationId);
-      const events = _.map(reservations, asGoogleEvent);
 
+
+      const reservations = reservationCache.get(req.session.reservationId) || [];
+      logUserInfo(client, reservations);
+      const events = _.map(reservations, asGoogleEvent);
       var readyCount = 0;
+      const serveResponse = () => {
+        if (readyCount === events.length) {
+          res.header("Content-Type", "text/html");
+          res.send([
+            `OK: Google-kalenteriin tallennettiin ${events.length} ${events.length === 1 ? 'varaus' : 'varausta'}.`,
+            `Katso <a href="https://calendar.google.com/">Google-kalenteri</a>.`
+          ].join('\n'));
+        }
+      };
+
+      if (_.size(events) === 0) serveResponse();
+
       _.forEach(events, event => {
         calendar.events.import({
           auth: client,
@@ -161,13 +194,7 @@ app.get(PATHS.googleOauthCallback, (req, res) => {
             res.status(500).send(err);
             return;
           } else {
-            if (readyCount === events.length) {
-              res.header("Content-Type", "text/html");
-              res.send([
-                `OK: Google-kalenteriin tallennettiin ${events.length} ${events.length === 1 ? 'varaus' : 'varausta'}.`,
-                `Katso <a href="https://calendar.google.com/">Google-kalenteri</a>.`
-              ].join('\n'));
-            }
+            serveResponse();
           }
         });
       });
