@@ -5,6 +5,7 @@ const uuid = require('uuid');
 const _ = require('lodash');
 const crypto = require('crypto');
 const Cachd = require('cachd');
+const exphbs = require('express-handlebars');
 const reservationCache = new Cachd({
   ttl: 1000*60*30, // max age millis
   maxLength: 2000,
@@ -130,7 +131,9 @@ app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });
-app.set('view engine', 'ejs');
+app.engine('handlebars', exphbs({defaultLayout: 'main'}));
+app.set('view engine', 'handlebars');
+
 app.use(express.static('src')); // TODO: gulp to dist
 
 app.get('/', (req, res) => {

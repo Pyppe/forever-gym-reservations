@@ -17,8 +17,8 @@
   "dependencies": {
     "body-parser": "^1.15.0",
     "cachd": "^1.0.0",
-    "ejs": "^2.4.1",
     "express": "^4.13.4",
+    "express-handlebars": "^3.0.0",
     "express-session": "^1.13.0",
     "google-auth-library": "^0.9.7",
     "googleapis": "^2.1.7",
