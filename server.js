@@ -47,7 +47,8 @@ function logUserInfo(auth, reservations) {
 }
 
 const StatusCode = {
-  BAD_REQUEST: 400
+  BAD_REQUEST    : 400,
+  INTERNAL_ERROR : 500
 };
 
 const pageParams = (function() {
@@ -86,6 +87,17 @@ function fetchEvents(auth, callback) {
     singleEvents: true,
     orderBy: 'startTime'
   }, callback);
+}
+
+function fetchCalendarList(auth, callback) {
+  calendar.calendarList.
+    list({auth: auth, minAccessRole: 'owner'}, (err, response) => {
+      var calendars = [];
+      if (!err) {
+        calendars = _.sortBy(response.items, ['primary', 'summary']);
+      }
+      callback(err, calendars);
+    });
 }
 
 const RequiredReservationFields = ['summary', 'location', 'description', 'startTime', 'endTime'];
@@ -159,14 +171,27 @@ app.post('/reservations', (req, res) => {
   }
 });
 
+app.get('/kalenterit', (req, res) => {
+  const calendars = require('./mocked-calendars');
+  res.render('calendars', pageParams({calendars: calendars}));
+});
+
 app.get(PATHS.googleOauthCallback, (req, res) => {
   const client = googleOauth();
   client.getToken(req.query.code, (err, tokens) => {
     if (!err) {
       client.setCredentials(tokens);
 
-
       const reservations = reservationCache.get(req.session.reservationId) || [];
+      fetchCalendarList(client, (err, calendars) => {
+        if (err) {
+          res.status(StatusCode.INTERNAL_ERROR, "Google-kalentereiden haku epäonnistui.");
+          return;
+        }
+        res.render('calendars', pageParams({calendars: calendars}));
+      });
+
+      /*
       logUserInfo(client, reservations);
       const events = _.map(reservations, asGoogleEvent);
       var readyCount = 0;
@@ -191,13 +216,14 @@ app.get(PATHS.googleOauthCallback, (req, res) => {
           readyCount++;
           if (err) {
             console.error('Error: %o', err);
-            res.status(500).send(err);
+            res.status(StatusCode.INTERNAL_ERROR).send(err);
             return;
           } else {
             serveResponse();
           }
         });
       });
+      */
     }
   });
 });
