@@ -214,6 +214,48 @@ app.post('/reservations', (req, res) => {
   }
 });
 
+app.post('/api/google/sync-reservations', (req, res) => {
+  const id = req.session.id;
+  const auth = authenticatedGoogleClient(req);
+  const calendarId = req.body.calendarId;
+  const cancelledEventIds = req.body.cancelledEventIds;
+  const reservations = AppCache.get(id);
+  const totalRequestCount = _.size(cancelledEventIds) + _.size(reservations);
+  var readyCount = 0;
+  var errorCount = 0;
+
+  const asyncCallback = (err, response) => {
+    readyCount++;
+    if (err) {
+      console.error(`Error synchronizing reservations: ${err}`);
+      errorCount++;
+    } else {
+      debug('sync-reservations-callback', response)
+    }
+    if (readyCount === totalRequestCount) {
+      res.send({errors: errorCount});
+    }
+  };
+
+  if (totalRequestCount === 0) {
+    res.send({errors: 0});
+    return;
+  }
+
+  _.forEach(cancelledEventIds, eventId => {
+    calendar.events.delete({
+      auth, eventId, calendarId
+    }, asyncCallback);
+  });
+
+  _.forEach(_.map(reservations, asGoogleEvent), resource => {
+    calendar.events.import({
+      auth, calendarId, resource
+    }, asyncCallback);
+  });
+
+});
+
 app.get('/kalenterit', (req, res) => {
   const calendars = require('./mocked-calendars');
   res.render('import', pageParams({calendars: calendars}));
@@ -234,7 +276,7 @@ app.get('/playground', (req, res) => {
   }));
 });
 
-app.get('/api/google/removed-events', (req, res) => {
+app.get('/api/google/cancelled-events', (req, res) => {
   findExistingReservationEvents(authenticatedGoogleClient(req), req.query.calendarId, (err, events) => {
     if (err) {
       res.status(StatusCode.INTERNAL_ERROR).send('ERROR');
@@ -242,15 +284,15 @@ app.get('/api/google/removed-events', (req, res) => {
     }
     const currentReservationUids = _.map(AppCache.get(req.session.id), r => asGoogleEvent(r).iCalUID);
     const eventNoLongerExists = e => _.findIndex(currentReservationUids, id => id === e.iCalUID) === -1;
-    const removedEvents = _.filter(events, eventNoLongerExists);
+    const cancelledEvents = _.filter(events, eventNoLongerExists);
     if (req.query.html) {
-      if (_.size(removedEvents) > 0) {
-        res.render('removed-events', pageParams({layout: false, events: removedEvents}));
+      if (_.size(cancelledEvents) > 0) {
+        res.render('cancelled-events', pageParams({layout: false, events: cancelledEvents}));
       } else {
         res.send('');
       }
     } else {
-      res.send(removedEvents);
+      res.send(cancelledEvents);
     }
   });
 

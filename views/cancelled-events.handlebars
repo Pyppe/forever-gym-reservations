@@ -8,7 +8,7 @@
 </thead>
 <tbody>
   {{#events}}
-  <tr>
+  <tr data-event-id="{{id}}">
     <td>{{eventTime .}}</td>
     <td>{{summary}}</td>
     <td>{{{unsafeNewLinesToBrs description}}}<td>
