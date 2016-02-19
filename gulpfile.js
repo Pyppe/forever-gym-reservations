@@ -11,20 +11,77 @@ const exec      = require('child_process').exec;
 const fs        = require('fs');
 const _         = require('lodash');
 
-const jsSources = './src/*.js';
+const distJs = 'dist/js';
+const distCss = 'dist/css';
+const env = util.env.env || 'development';
+const isProduction = env === 'production';
+console.log('Using environment: ' + env);
 
-gulp.task('js', () => {
-  return gulp.src(jsSources).
+const paths = (() => {
+  const vendorScripts = [
+    'jquery.min.js',
+    'tether.min.js',
+    'bootstrap.min.js',
+    'select2/select2.full.min.js',
+    'select2/i18n/fi.js'
+  ].map(name => `src/js/vendor/${name}`);
+
+  const vendorCss = [
+    'bootstrap.min.css',
+    'select2.min.css',
+  ].map(name => `src/css/vendor/${name}`);
+
+  return {
+    siteJs: 'src/js/*.js',
+    vendorJs: vendorScripts,
+    vendorCss : vendorCss,
+    siteSass: 'src/sass/**/*.scss'
+  };
+})();
+
+gulp.task('vendorCss', () => {
+  return gulp.src(paths.vendorCss).
+    pipe(minifyCss({compatibility: ''})).
+    pipe(concat('vendor.css')).
+    pipe(gulp.dest(distCss));
+});
+
+gulp.task('siteCss', () => {
+  return gulp.src(paths.siteSass).
+    pipe(compass({
+      // config_file: 'public/config.rb'
+      environment : 'production',
+      style       : isProduction ? 'compact' : 'expanded',
+      images_dir  : 'img',
+      image       : 'img',
+      css         : 'dist/css',
+      javascript  : 'src/js',
+      sass        : 'src/sass',
+      relative    : false
+    })).
+    pipe(gulp.dest(distCss));
+});
+
+gulp.task('siteJs', () => {
+  return gulp.src(paths.siteJs).
     pipe(babel()).
-    pipe(uglify({
+    pipe(gulpif(isProduction, uglify({
       mangle: true,
       compress: { drop_console: true }
-    })).
-    pipe(gulp.dest('./dist'));
+    }))).
+    pipe(concat('site.js')).
+    pipe(gulp.dest(distJs));
+});
+
+gulp.task('vendorJs', () => {
+  return gulp.src(paths.vendorJs).
+    pipe(concat('vendor.js')).
+    pipe(gulp.dest(distJs));
 });
 
 gulp.task('fileWatch', () => {
-  gulp.watch(jsSources, ['js']);
+  gulp.watch(paths.siteJs, ['siteJs']);
+  gulp.watch(paths.siteSass, ['siteCss']);
 });
 
 gulp.task('bookmarklet', () => {
@@ -46,5 +103,6 @@ gulp.task('bookmarklet', () => {
   fs.writeFile('README.md', updatedReadMe);
 });
 
-gulp.task('default', ['js']);
-gulp.task('watch', ['js', 'fileWatch']);
+gulp.task('pipeline', ['siteJs', 'siteCss', 'vendorJs', 'vendorCss']);
+gulp.task('default', ['pipeline']);
+gulp.task('watch', ['default', 'fileWatch']);

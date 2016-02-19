@@ -1,12 +1,19 @@
-<h1>Synkronoi Forever-varaukset Google-kalenteriin</h1>
+<div id="calendars">
+  <h1>Synkronoi Forever-varaukset Google-kalenteriin</h1>
 
-<h3>Valitse kalenteri</h3>
-<div class="c-inputs-stacked">
-  {{#calendars}}
-  <label class="c-input c-radio">
-    <input type="radio" name="calendar2" value="{{id}}" />
-    <span class="c-indicator"></span>
-    <span style="display: inline-block; padding: 1px 5px; background: {{backgroundColor}}; color: {{foregroundColo}}">{{summary}}</span>
-  </label>
-  {{/calendars}}
+  <table><tbody>
+  <tr>
+    <td><h3>Valitse kalenteri:</h3></td>
+    <td>
+      <select>
+        {{#calendars}}
+        <option value="{{id}}"
+                data-background-color="{{backgroundColor}}"
+                data-foreground-color="{{foregroundColor}}">{{summary}}</option>
+        {{/calendars}}
+      </select>
+    </td>
+  </tr>
+  </tbody></table>
+
 </div>

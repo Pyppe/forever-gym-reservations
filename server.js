@@ -134,7 +134,7 @@ app.use(function(req, res, next) {
 app.engine('handlebars', exphbs({defaultLayout: 'main'}));
 app.set('view engine', 'handlebars');
 
-app.use(express.static('src')); // TODO: gulp to dist
+app.use(express.static('dist'));
 
 app.get('/', (req, res) => {
   /*
