@@ -63,15 +63,15 @@ const StatusCode = {
 const pageParams = (function() {
   const startTime = new Date().getTime();
   const bookmarklet = fs.readFileSync('dist/bookmarklet.js').toString()
+  const formatTime = (start, end) => `${moment(start).format('ddd D.M.YYYY [klo] HH:mm')} - ${moment(end).format('HH:mm')}`
   return params => _.assign({
     Global: {
       ApplicationStartTime: startTime,
       Bookmarklet: bookmarklet
     },
     helpers: {
-      reservationTime: reservation => {
-        return `${moment(reservation.startTime).format('ddd D.M.YYYY [klo] HH:mm')} - ${moment(reservation.endTime).format('HH:mm')}`;
-      },
+      reservationTime: reservation => formatTime(reservation.startTime, reservation.endTime),
+      eventTime: event => formatTime(event.start.dateTime, event.end.dateTime),
       unsafeNewLinesToBrs: text => text.replace(/[\n\r]/g, '<br/>')
     }
   }, params || {});
@@ -242,7 +242,16 @@ app.get('/api/google/removed-events', (req, res) => {
     }
     const currentReservationUids = _.map(AppCache.get(req.session.id), r => asGoogleEvent(r).iCalUID);
     const eventNoLongerExists = e => _.findIndex(currentReservationUids, id => id === e.iCalUID) === -1;
-    res.send(_.filter(events, eventNoLongerExists));
+    const removedEvents = _.filter(events, eventNoLongerExists);
+    if (req.query.html) {
+      if (_.size(removedEvents) > 0) {
+        res.render('removed-events', pageParams({layout: false, events: removedEvents}));
+      } else {
+        res.send('');
+      }
+    } else {
+      res.send(removedEvents);
+    }
   });
 
 });

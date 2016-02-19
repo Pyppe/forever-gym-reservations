@@ -9,6 +9,12 @@
   }
 }
 
+#events-to-remove {
+  table td {
+    text-decoration: line-through;
+  }
+}
+
 .calendar-option {
   > span {
     vertical-align: middle;

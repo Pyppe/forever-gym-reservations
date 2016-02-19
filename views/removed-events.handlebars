@@ -1,0 +1,18 @@
+<table class="table table-striped">
+<thead>
+  <tr>
+    <th>Aika</th>
+    <th>Tunti</th>
+    <th>Kuvaus</th>
+  </tr>
+</thead>
+<tbody>
+  {{#events}}
+  <tr>
+    <td>{{eventTime .}}</td>
+    <td>{{summary}}</td>
+    <td>{{{unsafeNewLinesToBrs description}}}<td>
+  </tr>
+  {{/events}}
+</tbody>
+</table>
