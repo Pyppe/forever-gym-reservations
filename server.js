@@ -6,17 +6,13 @@ const _ = require('lodash');
 const crypto = require('crypto');
 const Cachd = require('cachd');
 const exphbs = require('express-handlebars');
+const fs = require('fs');
 const reservationCache = new Cachd({
   ttl: 1000*60*30, // max age millis
   maxLength: 2000,
   removalStrategy: 'oldest'
 });
-const CONFIG = require('./configuration.json');
-const mode = (process.env.NODE_ENV === 'production') ? 'production' : 'development';
-if (mode === 'development') {
-  CONFIG.baseUrl = 'http://localhost:3000';
-  CONFIG.port = 3000;
-}
+const CONFIG = require('./config.js');
 const PATHS = {
   googleOauthCallback: "/google/oauthcallback"
 };
@@ -54,10 +50,11 @@ const StatusCode = {
 
 const pageParams = (function() {
   const startTime = new Date().getTime();
+  const bookmarklet = fs.readFileSync('dist/bookmarklet.js').toString()
   return params => _.assign({
     Global: {
       ApplicationStartTime: startTime,
-      Bookmarklet: `javascript:(function(){"use strict";function loadScript(t,e){var r=document.createElement("script");r.src=t;var n=document.getElementsByTagName("head")[0],a=!1;r.onload=r.onreadystatechange=function(){var t=!this.readyState||"loaded"==this.readyState||"complete"==this.readyState;!a&&t&&(a=!0,e(),r.onload=r.onreadystatechange=null,n.removeChild(r))},n.appendChild(r)}function isRightPage(){return"forever.bypolar.fi"===location.hostname&&location.search.indexOf("webUserReservations")>0}function parseReservations(){function t(t){var e=function(t){return 1===t.length?"0"+t:t},r=t.match(/^(\d{1,2}).(\d{1,2}).(\d{4})$/);return e(r[3])+"-"+e(r[2])+"-"+r[1]}function e(t){var e=t.match(/^(\d\d:\d\d)\s*.\s*(\d\d:\d\d)$/);return[e[1]+":00",e[2]+":00"]}function r(t){return $.trim(t.replace(/([\n\r\t\s]+)/g," "))}var n=$(".searchResults tbody tr");return n.toArray().map(function(n){var a=$(n),i=function(t){return r(a.find("td:eq("+t+")").text())},o=t(i(0)),s=e(i(1)),u=_slicedToArray(s,2),c=u[0],d=u[1];return{startTime:o+"T"+c,endTime:o+"T"+d,summary:i(2),location:r($("#club-name").text()),description:["- Sijainti: "+i(3),"- Ohjaaja: "+i(4)].join("\n")}})}function saveReservations(t,e){return $.ajax({url:e,type:"POST",contentType:"application/json",data:JSON.stringify(t)}).error(function(t){alert("Virhe")})}var _slicedToArray=function(){function t(t,e){var r=[],n=!0,a=!1,i=void 0;try{for(var o,s=t[Symbol.iterator]();!(n=(o=s.next()).done)&&(r.push(o.value),!e||r.length!==e);n=!0);}catch(u){a=!0,i=u}finally{try{!n&&s["return"]&&s["return"]()}finally{if(a)throw i}}return r}return function(e,r){if(Array.isArray(e))return e;if(Symbol.iterator in Object(e))return t(e,r);throw new TypeError("Invalid attempt to destructure non-iterable instance")}}();isRightPage()?loadScript("https://code.jquery.com/jquery.min.js",function(){var t="https://forever.pyppe.fi";saveReservations(parseReservations(),t+"/reservations").done(function(e){window.open(t+"/authenticate?id="+e.id)})}):alert(["Et ole oikealla sivulla.",'Kirjaudu sisään osoitteessa https://forever.bypolar.fi/, ja mene "Omat varaukset" -sivulle.'].join("\n"));})();`
+      Bookmarklet: bookmarklet
     }
   }, params || {});
 })();
@@ -79,13 +76,14 @@ function mockEvent() {
   };
 }
 
-function fetchEvents(auth, callback) {
+function fetchEvents(auth, calendarId, callback) {
   calendar.events.list({
     auth: auth,
-    calendarId: 'primary',
+    calendarId: calendarId || 'primary',
     timeMin: (new Date()).toISOString(),
     maxResults: 10,
     singleEvents: true,
+    q: 'forever-gym-reservations',
     orderBy: 'startTime'
   }, callback);
 }
@@ -113,6 +111,10 @@ const asGoogleEvent = (reservation) => {
   return _.assign(_.pick(reservation, 'summary', 'location', 'description'), {
     start: finnishDate(reservation.startTime),
     end: finnishDate(reservation.endTime),
+    source: {
+      title: 'forever-gym-reservations',
+      url: 'https://forever.pyppe.fi'
+    },
     iCalUID: md5(_.map(_.without(RequiredReservationFields, 'description'), f => reservation[f]).join(',')) + '@forever-gym-reservations'
   });
 };
@@ -183,7 +185,12 @@ app.get(PATHS.googleOauthCallback, (req, res) => {
   const client = googleOauth();
   client.getToken(req.query.code, (err, tokens) => {
     if (!err) {
+      console.log(tokens);
       client.setCredentials(tokens);
+      fetchEvents(client, 'primary', (err, response) => {
+        console.log(err);
+        console.log(response);
+      });
 
       const reservations = reservationCache.get(req.session.reservationId) || [];
       fetchCalendarList(client, (err, calendars) => {
@@ -233,5 +240,5 @@ app.get(PATHS.googleOauthCallback, (req, res) => {
 
 
 app.listen(CONFIG.port, () => {
-  console.log(`forever-gym-reservations listening on port ${CONFIG.port}!`);
+  console.log(`forever-gym-reservations (${CONFIG.env}) listening on port ${CONFIG.port}!`);
 });

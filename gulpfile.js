@@ -3,6 +3,7 @@ const compass   = require("gulp-compass");
 const concat    = require("gulp-concat");
 const gulpif    = require('gulp-if');
 const gulp      = require("gulp");
+const replace   = require('gulp-replace');
 const minifyCss = require("gulp-minify-css");
 const uglify    = require('gulp-uglify');
 const util      = require('gulp-util');
@@ -13,9 +14,8 @@ const _         = require('lodash');
 
 const distJs = 'dist/js';
 const distCss = 'dist/css';
-const env = util.env.env || 'development';
-const isProduction = env === 'production';
-console.log('Using environment: ' + env);
+const CONFIG = require('./config.js');
+console.log('Using environment: ' + CONFIG.env);
 
 const paths = (() => {
   const vendorScripts = [
@@ -51,7 +51,7 @@ gulp.task('siteCss', () => {
     pipe(compass({
       // config_file: 'public/config.rb'
       environment : 'production',
-      style       : isProduction ? 'compact' : 'expanded',
+      style       : CONFIG.isProduction ? 'compact' : 'expanded',
       images_dir  : 'img',
       image       : 'img',
       css         : 'dist/css',
@@ -65,7 +65,7 @@ gulp.task('siteCss', () => {
 gulp.task('siteJs', () => {
   return gulp.src(paths.siteJs).
     pipe(babel()).
-    pipe(gulpif(isProduction, uglify({
+    pipe(gulpif(CONFIG.isProduction, uglify({
       mangle: true,
       compress: { drop_console: true }
     }))).
@@ -85,10 +85,27 @@ gulp.task('fileWatch', () => {
 });
 
 gulp.task('bookmarklet', () => {
+
+  return gulp.src('src/bookmarklet.js').
+    pipe(babel()).
+    pipe(gulpif(CONFIG.isProduction || true, uglify({
+      mangle: true,
+      compress: { drop_console: true }
+    }))).
+    pipe(replace(/\t/g,'\\t')).
+    pipe(replace(/^(.*)$/g,'javascript:(function(){$1})();')).
+    pipe(replace('<BASEURL>', CONFIG.baseUrl)).
+    pipe(gulp.dest('dist'));
+
+  /*
   const readFile = path => fs.readFileSync(path).toString();
   const jsWrap = js => 'javascript:(function(){'+js.replace(/\t/g,'\\t')+'})();';
 
   const code = readFile('dist/app.js');
+  fs.writeFile('./dist/bookmarklet.js', jsWrap(code));
+  */
+
+  /*
   const lines = readFile('README.md').toString().split(/\r?\n/);
   const updatedReadMe = _.reduce(lines, (acc, line) => {
     if (line.indexOf('javascript:') === 0) {
@@ -98,11 +115,10 @@ gulp.task('bookmarklet', () => {
     }
     return acc;
   }, []).join('\n');
-
-  fs.writeFile('./dist/bookmarklet.js', jsWrap(code));
   fs.writeFile('README.md', updatedReadMe);
+  */
 });
 
 gulp.task('pipeline', ['siteJs', 'siteCss', 'vendorJs', 'vendorCss']);
-gulp.task('default', ['pipeline']);
+gulp.task('default', ['pipeline', 'bookmarklet']);
 gulp.task('watch', ['default', 'fileWatch']);

@@ -94,8 +94,7 @@ function uploadFile(filename, description, content) {
 */
 
 if (isRightPage()) {
-  const baseUrl = 'http://localhost:3000';
-  //const baseUrl = 'https://forever.pyppe.fi';
+  const baseUrl = '<BASEURL>';
 
   const saveReservationsAction = () => {
     saveReservations(parseReservations(), `${baseUrl}/reservations`).done(res => {
@@ -111,7 +110,7 @@ if (isRightPage()) {
 } else {
   alert([
     'Et ole oikealla sivulla.',
-    'Kirjaudu sisään osoitteessa https://forever.bypolar.fi/, ja mene "Omat varaukset" -sivulle.'
+    `Kirjaudu sisään osoitteessa https://forever.bypolar.fi/, ja mene "Omat varaukset" -sivulle.`
   ].join('\n'));
 }
 
