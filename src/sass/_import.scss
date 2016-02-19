@@ -1,12 +1,11 @@
 
-#calendars {
+#import {
   select {
     width: 300px;
   }
-  table {
-    td:first-child {
-      padding-right: 20px;
-    }
+  .select-container {
+    margin-top: 20px;
+    margin-bottom: 20px;
   }
 }
 

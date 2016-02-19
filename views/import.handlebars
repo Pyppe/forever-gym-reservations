@@ -1,0 +1,38 @@
+<div id="import">
+  <h1>Synkronoi Forever-varaukset Google-kalenteriin</h1>
+  <div class="select-container">
+    <strong>Valitse kalenteri:</strong>
+    <select>
+      {{#calendars}}
+      <option value="{{id}}"
+              data-background-color="{{backgroundColor}}"
+              data-foreground-color="{{foregroundColor}}">{{summary}}</option>
+      {{/calendars}}
+    </select>
+  </div>
+
+  <h4>Tallennettavat varaukset</h4>
+  <table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Aika</th>
+      <th>Tunti</th>
+      <th>Kuvaus</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#reservations}}
+    <tr>
+      <td>{{reservationTime .}}</td>
+      <td>{{summary}}</td>
+      <td>{{{unsafeNewLinesToBrs description}}}<td>
+    </tr>
+    {{/reservations}}
+  </tbody>
+  </table>
+
+  <button class="btn btn-primary btn-success">
+    <i class="fa fa-save"></i> Tallenna &raquo; <small><span cal-name></span></small>
+  </button>
+
+</div>

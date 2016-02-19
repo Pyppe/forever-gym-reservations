@@ -2,17 +2,20 @@ const google = require('googleapis');
 const googleOAuth2 = google.auth.OAuth2;
 const calendar = google.calendar('v3');
 const uuid = require('uuid');
+const moment = require('moment');
+moment.locale('fi');
 const _ = require('lodash');
 const crypto = require('crypto');
 const Cachd = require('cachd');
 const exphbs = require('express-handlebars');
 const fs = require('fs');
-const reservationCache = new Cachd({
+const AppCache = new Cachd({
   ttl: 1000*60*30, // max age millis
   maxLength: 2000,
   removalStrategy: 'oldest'
 });
 const CONFIG = require('./config.js');
+const ICAL_UID_SUFFIX = '@forever-gym-reservations';
 const PATHS = {
   googleOauthCallback: "/google/oauthcallback"
 };
@@ -20,6 +23,15 @@ const PATHS = {
 const googleOauth = () => new googleOAuth2(CONFIG.google.client_id,
                                            CONFIG.google.client_secret,
                                            `${CONFIG.baseUrl}${PATHS.googleOauthCallback}`);
+
+const debug = (title, json) => {
+  if (!CONFIG.isProduction) {
+    console.log(title);
+    console.log(JSON.stringify(json, null, 2));
+    console.log('=======================');
+    console.log('');
+  }
+};
 
 function generateGoogleAuthUrl() {
   return googleOauth().generateAuthUrl({
@@ -55,6 +67,12 @@ const pageParams = (function() {
     Global: {
       ApplicationStartTime: startTime,
       Bookmarklet: bookmarklet
+    },
+    helpers: {
+      reservationTime: reservation => {
+        return `${moment(reservation.startTime).format('ddd D.M.YYYY [klo] HH:mm')} - ${moment(reservation.endTime).format('HH:mm')}`;
+      },
+      unsafeNewLinesToBrs: text => text.replace(/[\n\r]/g, '<br/>')
     }
   }, params || {});
 })();
@@ -72,7 +90,7 @@ function mockEvent() {
       dateTime: '2016-02-13T09:30:00',
       timeZone: 'Europe/Helsinki'
     },
-    iCalUID: 'pyppetestaa@forever-gym-reservations'
+    iCalUID: 'pyppetestaa'+ICAL_UID_SUFFIX
   };
 }
 
@@ -83,10 +101,29 @@ function fetchEvents(auth, calendarId, callback) {
     timeMin: (new Date()).toISOString(),
     maxResults: 10,
     singleEvents: true,
-    q: 'forever-gym-reservations',
+    q: 'forever',
     orderBy: 'startTime'
   }, callback);
 }
+
+function findExistingReservationEvents(auth, calendarId, callback) {
+  calendar.events.list({
+    auth: auth,
+    calendarId: calendarId || 'primary',
+    timeMin: (new Date()).toISOString(),
+    maxResults: 100,
+    singleEvents: true,
+    q: 'forever',
+    orderBy: 'startTime'
+  }, (err, response) => {
+    var events = [];
+    if (!err) {
+      events = _.filter(response.items, event => _.endsWith(event.iCalUID, ICAL_UID_SUFFIX));
+    }
+    callback(err, events);
+  });
+}
+
 
 function fetchCalendarList(auth, callback) {
   calendar.calendarList.
@@ -103,7 +140,6 @@ const RequiredReservationFields = ['summary', 'location', 'description', 'startT
 
 const isValidReservation = (reservation) => _.every(RequiredReservationFields, key => _.has(reservation, key));
 const md5 = str => crypto.createHash('md5').update(str).digest("hex");
-
 const asGoogleEvent = (reservation) => {
   const finnishDate = d => {
     return {dateTime: d, timeZone: 'Europe/Helsinki'};
@@ -115,19 +151,32 @@ const asGoogleEvent = (reservation) => {
       title: 'forever-gym-reservations',
       url: 'https://forever.pyppe.fi'
     },
-    iCalUID: md5(_.map(_.without(RequiredReservationFields, 'description'), f => reservation[f]).join(',')) + '@forever-gym-reservations'
+    iCalUID: md5(_.map(_.without(RequiredReservationFields, 'description'), f => reservation[f]).join(',')) + ICAL_UID_SUFFIX
   });
+};
+const authenticatedGoogleClient = (req) => {
+  const client = googleOauth();
+  client.setCredentials(AppCache.get(`google-auth-${req.session.id}`));
+  return client;
 };
 
 const express = require('express');
 const app = express();
 app.use(require('body-parser').json());
+app.use(require('client-sessions')({
+  cookieName: 'session',
+  secret: CONFIG.session.secret,
+  duration: 1000 * 60 * 30,
+  activeDuration: 1000 * 60 * 5
+}));
+/*
 app.use(require('express-session')({
   genid: req => uuid.v4(),
   resave: false,
   saveUninitialized: true,
   secret: CONFIG.session.secret
 }));
+*/
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -139,12 +188,6 @@ app.set('view engine', 'handlebars');
 app.use(express.static('dist'));
 
 app.get('/', (req, res) => {
-  /*
-  res.send({
-    reservationId: req.session.reservationId,
-    reservations: reservationCache.get(req.session.reservationId)
-  });
-  */
   res.render('index', pageParams({
     message: 'Jou, jou'
   }));
@@ -155,13 +198,8 @@ app.get('/test-google', (req, res) => {
 });
 
 app.get('/authenticate', (req, res) => {
-  req.session['reservationId'] = req.query.id;
+  req.session['id'] = req.query.id;
   res.redirect(302, generateGoogleAuthUrl());
-});
-
-app.get('/mock', (req, res) => {
-  req.session['reservations'] = ['testing'];
-  res.send('session saved?');
 });
 
 app.post('/reservations', (req, res) => {
@@ -169,7 +207,7 @@ app.post('/reservations', (req, res) => {
   const validData = _.isArray(reservations) && _.every(reservations, isValidReservation);
   if (validData) {
     const id = uuid.v4();
-    reservationCache.set(id, reservations);
+    AppCache.set(id, reservations);
     res.send({id: id});
   } else {
     res.status(StatusCode.BAD_REQUEST).send('ERROR');
@@ -178,27 +216,61 @@ app.post('/reservations', (req, res) => {
 
 app.get('/kalenterit', (req, res) => {
   const calendars = require('./mocked-calendars');
-  res.render('calendars', pageParams({calendars: calendars}));
+  res.render('import', pageParams({calendars: calendars}));
+});
+
+app.get('/playground', (req, res) => {
+  req.session.id = 'mocked';
+  const readJson = f => JSON.parse(fs.readFileSync(`pyppe/${f}`).toString());
+  AppCache.set(`google-auth-${req.session.id}`, readJson('credentials.json'));
+  const reservations = readJson('mocked-reservations.json');
+  AppCache.set(req.session.id, reservations);
+  res.render('import', pageParams({
+    calendars: readJson('mocked-calendars.json'),
+    reservations: _.map(reservations, r => {
+      r.event = asGoogleEvent(r);
+      return r;
+    })
+  }));
+});
+
+app.get('/api/google/removed-events', (req, res) => {
+  findExistingReservationEvents(authenticatedGoogleClient(req), req.query.calendarId, (err, events) => {
+    if (err) {
+      res.status(StatusCode.INTERNAL_ERROR).send('ERROR');
+      return;
+    }
+    const currentReservationUids = _.map(AppCache.get(req.session.id), r => asGoogleEvent(r).iCalUID);
+    const eventNoLongerExists = e => _.findIndex(currentReservationUids, id => id === e.iCalUID) === -1;
+    res.send(_.filter(events, eventNoLongerExists));
+  });
+
 });
 
 app.get(PATHS.googleOauthCallback, (req, res) => {
   const client = googleOauth();
-  client.getToken(req.query.code, (err, tokens) => {
+  client.getToken(req.query.code, (err, credentials) => {
     if (!err) {
-      console.log(tokens);
-      client.setCredentials(tokens);
-      fetchEvents(client, 'primary', (err, response) => {
-        console.log(err);
-        console.log(response);
-      });
+      client.setCredentials(credentials);
+      debug('CREDENTIALS', credentials);
 
-      const reservations = reservationCache.get(req.session.reservationId) || [];
+      AppCache.set(`google-auth-${req.session.id}`, credentials);
+      const reservations = AppCache.get(req.session.id) || [];
+      debug('RESERVATIONS', reservations);
+
       fetchCalendarList(client, (err, calendars) => {
         if (err) {
           res.status(StatusCode.INTERNAL_ERROR, "Google-kalentereiden haku epäonnistui.");
           return;
         }
-        res.render('calendars', pageParams({calendars: calendars}));
+        debug('CALENDARS', calendars);
+        res.render('import', pageParams({
+          calendars: calendars,
+          reservations: _.map(reservations, r => {
+            r.event = asGoogleEvent(r);
+            return r;
+          })
+        }));
       });
 
       /*
