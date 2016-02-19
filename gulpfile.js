@@ -3,6 +3,7 @@ const compass   = require("gulp-compass");
 const concat    = require("gulp-concat");
 const gulpif    = require('gulp-if');
 const gulp      = require("gulp");
+const sass      = require('gulp-sass');
 const replace   = require('gulp-replace');
 const minifyCss = require("gulp-minify-css");
 const uglify    = require('gulp-uglify');
@@ -47,6 +48,7 @@ gulp.task('vendorCss', () => {
 });
 
 gulp.task('siteCss', () => {
+  /*
   return gulp.src(paths.siteSass).
     pipe(compass({
       // config_file: 'public/config.rb'
@@ -59,6 +61,11 @@ gulp.task('siteCss', () => {
       sass        : 'src/sass',
       relative    : false
     })).
+    pipe(gulp.dest(distCss));
+    */
+
+  return gulp.src(paths.siteSass).
+    pipe(sass().on('error', sass.logError)).
     pipe(gulp.dest(distCss));
 });
 

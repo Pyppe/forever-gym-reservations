@@ -1,5 +1,5 @@
 @charset "UTF-8";
-@import "compass";
+//@import "compass";
 @import "_mixins.scss";
 @import "_select2.scss";
 @import "_import.scss";
@@ -15,5 +15,5 @@ body {
 }
 
 .btn, .alert {
-  @include border-radius(0);
+  border-radius: 0;
 }
