@@ -20,13 +20,17 @@ const PATHS = {
   googleOauthCallback: "/google/oauthcallback"
 };
 
-winston.loggers.add('server', {
-  console: {
-    colorize: 'true',
-    timestamp: true
-  }
+require('mkdirp').sync('logs');
+const logger = new winston.Logger({
+  level: 'debug',
+  transports: [
+    new (winston.transports.Console)({
+      timestamp: true,
+      colorize: true
+    }),
+    new (winston.transports.File)({ filename: 'logs/server.log' })
+  ]
 });
-const logger = winston.loggers.get('server');
 
 const googleOauth = () => new google.auth.OAuth2(CONFIG.google.client_id,
                                                  CONFIG.google.client_secret,
