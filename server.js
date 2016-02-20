@@ -1,5 +1,4 @@
 const google = require('googleapis');
-const googleOAuth2 = google.auth.OAuth2;
 const calendar = google.calendar('v3');
 const uuid = require('uuid');
 const moment = require('moment');
@@ -9,6 +8,7 @@ const crypto = require('crypto');
 const Cachd = require('cachd');
 const exphbs = require('express-handlebars');
 const fs = require('fs');
+const winston = require("winston");
 const AppCache = new Cachd({
   ttl: 1000*60*30, // max age millis
   maxLength: 2000,
@@ -20,9 +20,17 @@ const PATHS = {
   googleOauthCallback: "/google/oauthcallback"
 };
 
-const googleOauth = () => new googleOAuth2(CONFIG.google.client_id,
-                                           CONFIG.google.client_secret,
-                                           `${CONFIG.baseUrl}${PATHS.googleOauthCallback}`);
+winston.loggers.add('server', {
+  console: {
+    colorize: 'true',
+    timestamp: true
+  }
+});
+const logger = winston.loggers.get('server');
+
+const googleOauth = () => new google.auth.OAuth2(CONFIG.google.client_id,
+                                                 CONFIG.google.client_secret,
+                                                 `${CONFIG.baseUrl}${PATHS.googleOauthCallback}`);
 
 const debug = (title, json) => {
   if (!CONFIG.isProduction) {
@@ -48,9 +56,9 @@ function logUserInfo(auth, reservations) {
     auth: auth
   }, (err, user) => {
     if (err) {
-      console.log('ERROR getting userinfo: ' + err);
+      logger.error('ERROR getting userinfo: ' + err);
     } else {
-      console.log(`User ${user.name} (${user.link}) authenticated with ${_.size(reservations)} reservations`);
+      logger.info(`User ${user.name} (${user.link}) authenticated with ${_.size(reservations)} reservations`);
     }
   });
 }
@@ -231,7 +239,7 @@ app.post('/api/google/sync-reservations', (req, res) => {
   const asyncCallback = (err, response) => {
     readyCount++;
     if (err) {
-      console.error(`Error synchronizing reservations: ${err}`);
+      logger.error(`Error synchronizing reservations: ${err}`);
       errorCount++;
     } else {
       debug('sync-reservations-callback', response)
@@ -339,5 +347,5 @@ app.get(PATHS.googleOauthCallback, (req, res) => {
 
 
 app.listen(CONFIG.port, () => {
-  console.log(`forever-gym-reservations (${CONFIG.env}) listening on port ${CONFIG.port}!`);
+  logger.info(`forever-gym-reservations (${CONFIG.env}) listening on port ${CONFIG.port}!`);
 });
