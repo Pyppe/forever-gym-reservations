@@ -155,9 +155,13 @@ const asGoogleEvent = (reservation) => {
   });
 };
 const authenticatedGoogleClient = (req) => {
-  const client = googleOauth();
-  client.setCredentials(AppCache.get(`google-auth-${req.session.id}`));
-  return client;
+  const credentials = AppCache.get(`google-auth-${req.session.id}`);
+  if (credentials) {
+    const client = googleOauth();
+    client.setCredentials(credentials);
+    return client;
+  }
+  return null;
 };
 
 const express = require('express');
@@ -256,11 +260,6 @@ app.post('/api/google/sync-reservations', (req, res) => {
 
 });
 
-app.get('/kalenterit', (req, res) => {
-  const calendars = require('./mocked-calendars');
-  res.render('import', pageParams({calendars: calendars}));
-});
-
 app.get('/playground', (req, res) => {
   req.session.id = 'mocked';
   const readJson = f => JSON.parse(fs.readFileSync(`pyppe/${f}`).toString());
@@ -298,65 +297,42 @@ app.get('/api/google/cancelled-events', (req, res) => {
 
 });
 
+app.get('/synkronoi-kalenteriin', (req, res) => {
+  const client = authenticatedGoogleClient(req);
+  const reservations = AppCache.get(req.session.id) || [];
+  if (!client) {
+    res.render('import', pageParams({
+      reservations: reservations
+    }));
+  } else {
+    fetchCalendarList(client, (err, calendars) => {
+      if (err) {
+        res.status(StatusCode.INTERNAL_ERROR, "Google-kalentereiden haku epäonnistui.");
+        return;
+      }
+      debug('CALENDARS', calendars);
+      res.render('import', pageParams({
+        calendars: calendars,
+        reservations: _.map(reservations, r => {
+          r.event = asGoogleEvent(r);
+          return r;
+        })
+      }));
+    });
+  }
+});
+
 app.get(PATHS.googleOauthCallback, (req, res) => {
   const client = googleOauth();
   client.getToken(req.query.code, (err, credentials) => {
     if (!err) {
       client.setCredentials(credentials);
       debug('CREDENTIALS', credentials);
-
       AppCache.set(`google-auth-${req.session.id}`, credentials);
       const reservations = AppCache.get(req.session.id) || [];
       debug('RESERVATIONS', reservations);
-
-      fetchCalendarList(client, (err, calendars) => {
-        if (err) {
-          res.status(StatusCode.INTERNAL_ERROR, "Google-kalentereiden haku epäonnistui.");
-          return;
-        }
-        debug('CALENDARS', calendars);
-        res.render('import', pageParams({
-          calendars: calendars,
-          reservations: _.map(reservations, r => {
-            r.event = asGoogleEvent(r);
-            return r;
-          })
-        }));
-      });
-
-      /*
       logUserInfo(client, reservations);
-      const events = _.map(reservations, asGoogleEvent);
-      var readyCount = 0;
-      const serveResponse = () => {
-        if (readyCount === events.length) {
-          res.header("Content-Type", "text/html");
-          res.send([
-            `OK: Google-kalenteriin tallennettiin ${events.length} ${events.length === 1 ? 'varaus' : 'varausta'}.`,
-            `Katso <a href="https://calendar.google.com/">Google-kalenteri</a>.`
-          ].join('\n'));
-        }
-      };
-
-      if (_.size(events) === 0) serveResponse();
-
-      _.forEach(events, event => {
-        calendar.events.import({
-          auth: client,
-          calendarId: 'primary',
-          resource: event
-        }, (err, response) => {
-          readyCount++;
-          if (err) {
-            console.error('Error: %o', err);
-            res.status(StatusCode.INTERNAL_ERROR).send(err);
-            return;
-          } else {
-            serveResponse();
-          }
-        });
-      });
-      */
+      res.redirect('/synkronoi-kalenteriin');
     }
   });
 });

@@ -39,7 +39,7 @@ $(() => {
           $eventsToRemove.hide();
         } else {
           $eventsToRemove.find('> *').remove();
-          $('<h3><i class="fa fa-calendar-plus-o"></i> Peruutetut varaukset</h3>').appendTo($eventsToRemove);
+          $('<h3><i class="fa fa-trash"></i> Peruutetut varaukset</h3>').appendTo($eventsToRemove);
           $(`<div class="alert alert-warning">Seuraavat peruutetut varaukset poistetaan kalenterista <b>${calendarName}</b>:</div>`).appendTo($eventsToRemove);
           $(html).appendTo($eventsToRemove);
           $eventsToRemove.show();

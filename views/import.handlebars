@@ -1,5 +1,6 @@
 <h1>Synkronoi Forever-varaukset Google-kalenteriin</h1>
 <div id="import">
+  {{#if calendars}}
   <div class="select-container">
     <strong>Valitse kalenteri:</strong>
     <select>
@@ -10,31 +11,42 @@
       {{/calendars}}
     </select>
   </div>
+  {{/if}}
 
-  <h3><i class="fa fa-calendar-plus-o"></i> Tallennettavat varaukset</h3>
-  <table class="table table-striped">
-  <thead>
-    <tr>
-      <th>Aika</th>
-      <th>Tunti</th>
-      <th>Kuvaus</th>
-    </tr>
-  </thead>
-  <tbody>
-    {{#reservations}}
-    <tr>
-      <td>{{reservationTime .}}</td>
-      <td>{{summary}}</td>
-      <td>{{{unsafeNewLinesToBrs description}}}<td>
-    </tr>
-    {{/reservations}}
-  </tbody>
-  </table>
+  {{#if reservations}}
+    <h3><i class="fa fa-calendar-plus-o"></i> Tallennettavat varaukset</h3>
+    <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Aika</th>
+        <th>Tunti</th>
+        <th>Kuvaus</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#reservations}}
+      <tr>
+        <td>{{reservationTime .}}</td>
+        <td>{{summary}}</td>
+        <td>{{{unsafeNewLinesToBrs description}}}<td>
+      </tr>
+      {{/reservations}}
+    </tbody>
+    </table>
+  {{/if}}
 
-  <div id="events-to-remove"></div>
+  {{#if calendars}}
+    <div id="events-to-remove"></div>
 
-  <button class="btn btn-primary btn-success">
-    <i class="fa fa-save"></i> Tallenna &raquo; <small><span cal-name></span></small>
-  </button>
+    <button class="btn btn-primary btn-success">
+      <i class="fa fa-save"></i> Tallenna &raquo; <small><span cal-name></span></small>
+    </button>
+  {{/if}}
+
+  {{#unless calendars}}
+    <div class="alert alert-info">
+      <p><i class="fa fa-lg fa-check-square"></i> Ei synkronoitavia varauksia.</p>
+    </div>
+  {{/unless}}
 
 </div>
