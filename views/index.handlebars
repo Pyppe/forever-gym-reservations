@@ -1,24 +1,22 @@
-<main>
-  <div class="jumbotron">
-    <h1>This is great</h1>
-    <p>Welcome to templating using handlebars, jeee!</p>
+<div id="index">
+  <main class="row">
+    <div class="jumbotron">
+      <h1>Forever-kuntosalin epävirallinen kalenterivitkutin</h1>
+      <p><i class="fa fa-thumbs-up fa-lg"></i> Synkronoi Forever-tuntivaraukset Google-kalenteriisi!</p>
+    </div>
+  </main>
+
+  <h1>Lisää synkronointi-kirjanmerkki</h1>
+  <p>
+    Synkronointi tapahtuu kirjanmerkin avulla (ns. <em>"bookmarklet"</em>).
+  </p>
+  <div>
+    <a class="has-tooltip" href="{{Global.Bookmarklet}}" title="Raahaa minut kirjanmerkkeihisi!">
+      <span class="fa-stack fa-lg">
+        <i class="fa fa-square-o fa-stack-2x"></i>
+        <i class="fa fa-bookmark fa-stack-1x"></i>
+      </span>
+      Forever-tuntivaraukset kalenteriin
+    </a>
   </div>
-</main>
-
-<h4>TODO <small class="text-muted">{{message}}</small></h4>
-<ul>
-  <li>https://github.com/scotch-io/node-ejs</li>
-  <li>https://scotch.io/tutorials/use-ejs-to-template-your-node-application</li>
-</ul>
-
-<h1>Bookmarklet</h1>
-<p>Raahaa bookmarkkeihin:<p>
-<div>
-  <a href="{{Global.Bookmarklet}}" title="Forever-treenit kalenteriin">
-    <span class="fa-stack fa-lg">
-      <i class="fa fa-square-o fa-stack-2x"></i>
-      <i class="fa fa-bookmark fa-stack-1x"></i>
-    </span>
-    Forever-treenit kalenteriin
-  </a>
 </div>

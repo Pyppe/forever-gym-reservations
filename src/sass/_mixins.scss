@@ -2,10 +2,12 @@ $body-font-family: "Raleway", "Helvetica Neue", Helvetica, Arial, sans-serif;
 //$title-font-family: "Titillium Web", "Helvetica Neue", Helvetica, Arial, sans-serif;
 $title-font-family: "Open Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
 
+$color-red: #e2001a;
+
 @mixin title-font() {
   font-family: $title-font-family;
   font-weight: 400;
-  color: #e2001a;
+  color: $color-red;
 }
 
 @mixin body-font() {

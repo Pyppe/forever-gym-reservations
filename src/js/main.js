@@ -1,0 +1,3 @@
+$(() => {
+  $('.has-tooltip[title]').tooltip();
+});

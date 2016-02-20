@@ -1,0 +1,11 @@
+#index {
+  .jumbotron {
+    color: white;
+    h1,h2,h3 {
+      color: white;
+      font-weight: 700;
+    }
+    background: $color-red;
+    border-radius: 0;
+  }
+}
