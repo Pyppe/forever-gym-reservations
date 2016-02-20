@@ -10,6 +10,15 @@ $(() => {
   const $buttonText = $button.find('[cal-name]');
   const $eventsToRemove = $('#events-to-remove');
 
+  const {previousCalendarId, saveCalendarId} = (() => {
+    const key = 'googleCalendarId';
+
+    return {
+      previousCalendarId:  () => localStorage.getItem(key),
+      saveCalendarId: (value) => localStorage.setItem(key, value)
+    };
+  })();
+
   const onCalendarChange = () => {
     const ajaxInProgress = loading => {
       $button.prop('disabled', loading);
@@ -46,12 +55,15 @@ $(() => {
     const cancelledIds = $eventsToRemove.find('[data-event-id]').map(function() {
       return $(this).data('eventId');
     }).toArray();
+    const calendarId = $select.val();
+
+    saveCalendarId(calendarId);
     $.ajax({
       url: '/api/google/sync-reservations',
       type: 'POST',
       contentType: 'application/json',
       data: JSON.stringify({
-        calendarId: $select.val(),
+        calendarId: calendarId,
         cancelledEventIds: cancelledIds
       })
     }).done(response => {
@@ -63,10 +75,14 @@ $(() => {
       const icon = `<i class="fa fa-lg fa-${hasErrors ? 'warning' : 'check-circle-o'}"></i>`;
       $(`<div class="alert ${hasErrors ? 'alert-danger' : 'alert-success'}">${icon} ${text}</div>`).insertAfter($('#import'));
     });
-
   });
 
-
+  if (previousCalendarId()) {
+    const prevId = previousCalendarId();
+    if ($select.find(`option[value="${prevId}"]`).length > 0) {
+      $select.val(prevId);
+    }
+  }
   $select.select2({
     templateSelection: styleOption,
     templateResult: styleOption
