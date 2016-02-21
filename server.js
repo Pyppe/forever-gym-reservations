@@ -80,7 +80,9 @@ const pageParams = (function() {
     Global: {
       ApplicationStartTime: startTime,
       Bookmarklet: bookmarklet,
-      Title: 'Forever-kuntosalin tuntivaraukset kalenteriisi'
+      Title: 'Forever-kuntosalin tuntivaraukset kalenteriisi',
+      Description: 'Synkronoi Forever-kuntosalin tuntivaraukset omaan Google-kalenteriisi helposti ja näppärästi!',
+      BaseUrl: CONFIG.baseUrl
     },
     helpers: {
       reservationTime: reservation => formatTime(reservation.startTime, reservation.endTime),
