@@ -16,4 +16,5 @@ node_modules
 
 /dist/
 /configuration.json
+/public/.well-known/
 
