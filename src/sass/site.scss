@@ -25,6 +25,19 @@ body {
     color: white;
     font-weight: 700;
   }
+  h1 {
+    img {
+      height: 80px;
+      margin-top: -30px;
+    }
+    span {
+      display: inline-block;
+      margin-left: -30px;
+      b {
+        opacity: 0;
+      }
+    }
+  }
   h4 {
     font-weight: 400;
   }
