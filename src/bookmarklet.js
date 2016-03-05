@@ -31,7 +31,7 @@ function parseReservations() {
   function parseIsoDate(str) {
     const pad = x => x.length === 1 ? `0${x}` : x;
     const m = str.match(/^(\d{1,2}).(\d{1,2}).(\d{4})$/);
-    return `${pad(m[3])}-${pad(m[2])}-${m[1]}`;
+    return `${pad(m[3])}-${pad(m[2])}-${pad(m[1])}`;
   }
 
   function parseTimes(str) {
@@ -95,6 +95,7 @@ function uploadFile(filename, description, content) {
 
 if (isRightPage()) {
   const baseUrl = '<BASEURL>';
+  const bookmarkletVersion = '<BOOKMARKLET_VERSION>';
 
   const saveReservationsAction = () => {
     saveReservations(parseReservations(), `${baseUrl}/reservations`).done(res => {
@@ -105,7 +106,16 @@ if (isRightPage()) {
   if (typeof jQuery == 'undefined') {
     loadScript('https://code.jquery.com/jquery.min.js', saveReservationsAction);
   } else {
-    saveReservationsAction();
+    $.get(`${baseUrl}/version`).done(latestVersion => {
+      if (latestVersion === bookmarkletVersion) {
+        saveReservationsAction();
+      } else {
+        alert([
+          `Bookmarkletin versio on päivittynyt (${latestVersion})`,
+          `Ole hyvä ja päivitä kirjanmerkkisi osoitteesta ${baseUrl}`
+        ].join('\n'));
+      }
+    });
   }
 } else {
   alert([

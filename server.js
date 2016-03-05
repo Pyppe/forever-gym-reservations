@@ -75,7 +75,7 @@ const StatusCode = {
 const pageParams = (function() {
   const startTime = new Date().getTime();
   const bookmarklet = fs.readFileSync('dist/bookmarklet.js').toString()
-  const formatTime = (start, end) => `${moment(start).format('ddd D.M.YYYY [klo] HH:mm')} - ${moment(end).format('HH:mm')}`
+  const formatTime = (start, end) => `${moment(start).format('ddd D.M.YYYY [klo] HH:mm')} - ${moment(end).format('HH:mm')}`;
   return params => _.assign({
     Global: {
       ApplicationStartTime: startTime,
@@ -211,6 +211,11 @@ app.get('/', (req, res) => {
   res.render('index', pageParams({
     message: 'Jou, jou'
   }));
+});
+
+app.get('/version', (req, res) => {
+  res.header('Content-Type', 'text/plain');
+  res.send(CONFIG.bookmarkletVersion);
 });
 
 app.get('/test-google', (req, res) => {

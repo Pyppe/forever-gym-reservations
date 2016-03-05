@@ -102,6 +102,7 @@ gulp.task('bookmarklet', () => {
     pipe(replace(/\t/g,'\\t')).
     pipe(replace(/^(.*)$/g,'javascript:(function(){$1})();')).
     pipe(replace('<BASEURL>', CONFIG.baseUrl)).
+    pipe(replace('<BOOKMARKLET_VERSION>', CONFIG.bookmarkletVersion)).
     pipe(gulp.dest('dist'));
 
   /*

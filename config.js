@@ -5,5 +5,6 @@ CONFIG.baseUrl = isProd ? 'https://forever.pyppe.fi' : 'http://localhost:3000';
 CONFIG.port    = isProd ? 3003 : 3000;
 CONFIG.isProduction = isProd;
 CONFIG.env = env;
+CONFIG.bookmarkletVersion = '2016-03-05'; // update when breaking changes in bookmarket.js
 
 module.exports = CONFIG;
