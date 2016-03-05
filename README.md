@@ -1,7 +1,5 @@
 # forever-gym-reservations
 
-### Links
-* https://developers.google.com/google-apps/calendar/quickstart/nodejs
-* https://console.developers.google.com/apis/credentials?project=organic-airship-121816
-* https://github.com/google/google-api-nodejs-client/
-* https://developers.google.com/google-apps/calendar/create-events
+Palvelu synkronoi [Forever-kuntosalin](http://www.foreverclub.fi/) tuntivaraukset Google-kalenteriin.
+
+Ks. [forever.pyppe.fi](https://forever.pyppe.fi/).
